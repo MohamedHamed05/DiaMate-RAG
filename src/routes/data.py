@@ -46,7 +46,8 @@ async def upload_file(file: UploadFile,
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            'Signal': ResponseSignal.FILE_UPLOAD_SUCCESS.value
+            'Signal': ResponseSignal.FILE_UPLOAD_SUCCESS.value,
+            'File_ID': unique_filename
         }
     )
     
