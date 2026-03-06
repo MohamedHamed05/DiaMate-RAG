@@ -12,4 +12,8 @@ class BaseController():
         if not os.path.exists(self.FILE_DIR):
             os.makedirs(self.FILE_DIR , exist_ok=True)
         return self.FILE_DIR
+    
+    def get_file_ids(self):
+        return os.listdir(self.get_file_dir()) 
+
         

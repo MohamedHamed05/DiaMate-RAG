@@ -2,7 +2,7 @@ from fastapi import APIRouter, File, UploadFile, Depends, status
 from fastapi.responses import JSONResponse
 from controllers import DataController, ProcessController
 from utils.config import Settings, get_settings
-from .schemes.data_scheme import ProcessRequest
+from .schemes.data_scheme import ProcessFileRequest, ProcessAllRequest
 from models import ResponseSignal
 import logging
 import aiofiles
@@ -52,13 +52,12 @@ async def upload_file(file: UploadFile,
         }
     )
 
-@data_router.post('/process')
-async def process(request: ProcessRequest):
+@data_router.post('/process_file')
+async def process(request: ProcessFileRequest):
 
     file_id = request.file_id
     chunk_size = request.chunk_size
     overlap_size = request.overlap_size
-    start_over = request.startover
 
     project_controller = ProcessController()
 
@@ -86,7 +85,15 @@ async def process(request: ProcessRequest):
     )
 
 
-
+@data_router.post('/process_all')
+async def process_all(request: ProcessAllRequest):
+    
+    process_controller = ProcessController()
+    
+    file_ids = process_controller.get_file_ids()
+    chunk_size = request.chunk_size
+    overlap_size = request.overlap_size
+    
 
 
     
