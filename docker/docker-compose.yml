@@ -1,6 +1,10 @@
+networks:
+  diamate-net:
+    driver: bridge
+
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.17.0
     container_name: diamate-qdrant
     env_file:
       - ./env/qdrant.env
@@ -9,6 +13,14 @@ services:
       - "${QDRANT_GRPC_PORT:-6334}:6334"
     volumes:
       - ${QDRANT_STORAGE_PATH:-./qdrant_storage}:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "/qdrant/qdrant", "--help"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - diamate-net
     restart: unless-stopped
 
   redis:
@@ -21,4 +33,43 @@ services:
     volumes:
       - ${REDIS_DATA_PATH:-./redis_data}:/data
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - diamate-net
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: diamate-api
+    env_file:
+      - ../src/.env
+    environment:
+      QDRANT_HOST: qdrant
+      REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../src/assets/files:/app/src/assets/files
+      # Optional hot-reload for source edits:
+      # - ../src:/app/src
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - diamate-net
     restart: unless-stopped

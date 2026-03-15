@@ -31,9 +31,12 @@ Request → FastAPI Routes → Controllers → Providers / Stores
 
 ```
 DiaMate-RAG/
+├── .dockerignore              # Docker build context exclusions
 ├── docker/
-│   ├── docker-compose.yml       # Qdrant + Redis services
+│   ├── Dockerfile             # API image for local development
+│   ├── docker-compose.yml       # API + Qdrant + Redis services
 │   └── env/
+│       ├── api.env.example
 │       ├── qdrant.env.example
 │       └── redis.env.example
 ├── src/
@@ -70,77 +73,58 @@ DiaMate-RAG/
 ## Requirements
 
 - Python 3.11+
-- Docker & Docker Compose (for Qdrant and Redis)
+- Docker & Docker Compose
 - An API key for at least one provider (Google, OpenAI, or OpenRouter) — or Ollama running locally
 
 ## Setup
 
-### 1. Clone and create environment
+### 1. Clone repository
 
 ```bash
 git clone <repo-url>
 cd DiaMate-RAG
 ```
 
-Using Miniconda (recommended):
-```bash
-conda create -n diamate-rag python=3.11
-conda activate diamate-rag
-```
-
-Or using venv:
-```bash
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/Mac
-source venv/bin/activate
-```
-
-### 2. Install dependencies
+### 2. Configure API environment
 
 ```bash
-cd src
-pip install -r requirements.txt
+cp src/.env.example src/.env
 ```
 
-### 3. Start infrastructure
+Edit `src/.env` and set your provider and API key.
+
+For Dockerized API + services, ensure these values are set:
+
+```env
+QDRANT_HOST="qdrant"
+REDIS_HOST="redis"
+```
+
+### 3. Start full development stack (API + Redis + Qdrant)
 
 ```bash
 cd docker
-docker compose up -d
+docker compose up -d --build
 ```
 
 This starts:
+- **API** on `localhost:8000` (docs at http://localhost:8000/docs)
 - **Qdrant** on `localhost:6333` (dashboard at http://localhost:6333/dashboard)
 - **Redis** on `localhost:6379`
 
-### 4. Configure environment
+### 4. Verify health
 
 ```bash
-cd src
-cp .env.example .env
+docker compose ps
+curl http://localhost:8000/api/v1/
 ```
 
-Edit `.env` and set your provider and API key:
-
-```env
-# Choose your providers: google | openai | openrouter | ollama
-EMBEDDING_PROVIDER="google"
-LLM_PROVIDER="google"
-
-# Set the API key for your chosen provider
-GOOGLE_API_KEY="your-key-here"
-```
-
-### 5. Run the server
+### 5. Stop services
 
 ```bash
-cd src
-uvicorn main:app --reload
+cd docker
+docker compose down
 ```
-
-The API will be available at http://localhost:8000. Interactive docs at http://localhost:8000/docs.
 
 ## API Endpoints
 
