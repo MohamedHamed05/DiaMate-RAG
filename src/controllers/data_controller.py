@@ -3,6 +3,7 @@ from models import ResponseSignal
 from fastapi import UploadFile
 import re
 import uuid
+import os
 
 class DataController(BaseController):
     def __init__(self):
@@ -25,8 +26,15 @@ class DataController(BaseController):
     
     def _preprocess_filename(self, filename: str):
         preprocessed_file_name = re.sub('[^\w.]', '', filename).strip()
-        preprocessed_file_name.replace(' ', '_')
+        preprocessed_file_name = preprocessed_file_name.replace(' ', '_')
         return preprocessed_file_name
+
+    def delete_file(self, file_id: str) -> bool:
+        file_path = self.get_file_dir() / file_id
+        if not os.path.exists(file_path):
+            return False
+        os.remove(file_path)
+        return True
 
 
 

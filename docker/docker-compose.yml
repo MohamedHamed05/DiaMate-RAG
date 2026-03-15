@@ -1,0 +1,24 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: diamate-qdrant
+    env_file:
+      - ./env/qdrant.env
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - ${QDRANT_STORAGE_PATH:-./qdrant_storage}:/qdrant/storage
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: diamate-redis
+    env_file:
+      - ./env/redis.env
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ${REDIS_DATA_PATH:-./redis_data}:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped

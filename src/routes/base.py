@@ -1,13 +1,13 @@
-from fastapi import APIRouter, UploadFile, Depends, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from utils.config import Settings, get_settings
-import os
 
 base_router = APIRouter(
-    prefix="/api/v1"
+    prefix="/api/v1",
+    tags=['base']
 )
 
-@base_router.get("/")
+@base_router.get("/", summary="Health check")
 async def health(app_settings: Settings=Depends(get_settings)):
     app_name = app_settings.APP_NAME
     app_version = app_settings.APP_VERSION

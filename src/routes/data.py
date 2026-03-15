@@ -1,12 +1,11 @@
-from fastapi import APIRouter, File, UploadFile, Depends, status
+from fastapi import APIRouter, Request, UploadFile, Depends, status
 from fastapi.responses import JSONResponse
-from controllers import DataController, ProcessController
+from controllers import DataController
 from utils.config import Settings, get_settings
-from .schemes.data_scheme import ProcessFileRequest, ProcessAllRequest
+from .schemes.data_scheme import UploadFileResponse, ListFilesResponse, DeleteFileResponse
 from models import ResponseSignal
 import logging
 import aiofiles
-import os
 
 logger = logging.getLogger('uvicorn.error')
 
@@ -15,7 +14,33 @@ data_router = APIRouter(
     tags=['data']
 )
 
-@data_router.post('/upload')
+
+@data_router.get('/files', response_model=ListFilesResponse, summary="List uploaded files")
+async def list_files():
+    data_controller = DataController()
+    file_ids = data_controller.get_file_ids()
+    return ListFilesResponse(
+        Signal=ResponseSignal.FILE_PROCESS_SUCCESS.value,
+        files=file_ids,
+    )
+
+
+@data_router.delete('/{file_id}', response_model=DeleteFileResponse,
+                    summary="Delete a file and its embeddings",
+                    description="Removes the file from disk and deletes all its associated chunks from Qdrant.")
+async def delete_file(request: Request, file_id: str):
+    data_controller = DataController()
+    deleted = data_controller.delete_file(file_id)
+    if not deleted:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={'Signal': ResponseSignal.FILE_DELETE_FAILED.value}
+        )
+    request.app.state.qdrant_store.delete_by_file_id(file_id)
+    return DeleteFileResponse(Signal=ResponseSignal.FILE_DELETE_SUCCESS.value)
+
+
+@data_router.post('/upload', response_model=UploadFileResponse, summary="Upload a document file")
 async def upload_file(file: UploadFile,
                       app_settings: Settings = Depends(get_settings)):
     data_controller = DataController()
@@ -38,62 +63,12 @@ async def upload_file(file: UploadFile,
         logger.error(f"Error while uploading file: {e}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content= {
-                'Signal': ResponseSignal.FILE_UPLOAD_FAILED.value,
-
-            }
-        )
-
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            'Signal': ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-            'File_ID': unique_filename
-        }
-    )
-
-@data_router.post('/process_file')
-async def process(request: ProcessFileRequest):
-
-    file_id = request.file_id
-    chunk_size = request.chunk_size
-    overlap_size = request.overlap_size
-
-    project_controller = ProcessController()
-
-    file_content = project_controller.get_content(file_id)
-
-    chunks = project_controller.process_file_content(file_content=file_content,
-                                                     file_id=file_id,
-                                                     chunk_size=chunk_size,
-                                                     overlap_size=overlap_size)
-    
-    if chunks is None or len(chunks) == 0:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
             content={
-                'Signal': ResponseSignal.FILE_PROCCESS_FAIL.value   
+                'Signal': ResponseSignal.FILE_UPLOAD_FAILED.value,
             }
         )
-    
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            'signal': ResponseSignal.FILE_PROCCESS_SUCCESS.value,
-            'Ex. Chunk': chunks[0].page_content
-        }
+
+    return UploadFileResponse(
+        Signal=ResponseSignal.FILE_UPLOAD_SUCCESS.value,
+        File_ID=unique_filename,
     )
-
-
-@data_router.post('/process_all')
-async def process_all(request: ProcessAllRequest):
-    
-    process_controller = ProcessController()
-    
-    file_ids = process_controller.get_file_ids()
-    chunk_size = request.chunk_size
-    overlap_size = request.overlap_size
-    
-
-
-    
