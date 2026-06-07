@@ -13,19 +13,23 @@ class Settings(BaseSettings):
     # Provider selection
     EMBEDDING_PROVIDER: str = "google"
     LLM_PROVIDER: str = "google"
+    RERANKING_PROVIDER: str = "cohere"
 
     # Provider API keys
     GOOGLE_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    COHERE_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
 
     # Ollama
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_HOST: str = "ollama"
+    OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_EMBED_BATCH_SIZE: int = 32
 
     # Model overrides (blank = use provider default)
     EMBEDDING_MODEL: str = ""
     LLM_MODEL: str = ""
+    RERANKING_MODEL: str = ""
 
     # Qdrant
     QDRANT_HOST: str = "localhost"
