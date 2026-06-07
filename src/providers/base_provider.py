@@ -14,6 +14,12 @@ class EmbeddingProvider(ABC):
     async def get_embedding_size(self) -> int:
         embedding = await self.embed_text("test")
         return len(embedding)
+    
+class RerankingProvider(ABC):
+
+    @abstractmethod
+    async def rerank(self, model:str, query: str, documents: list[str], top_n: int):
+        pass
 
 
 class LLMProvider(ABC):
