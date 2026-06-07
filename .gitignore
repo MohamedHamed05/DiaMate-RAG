@@ -7,6 +7,10 @@ dist/
 build/
 *.egg
 
+qdrant_storage/
+
+redis_data/
+
 # Virtual environment
 venv/
 .venv/
