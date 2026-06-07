@@ -1,3 +1,5 @@
+name: DiaMate RAG
+
 networks:
   diamate-net:
     driver: bridge
@@ -53,6 +55,7 @@ services:
     environment:
       QDRANT_HOST: qdrant
       REDIS_HOST: redis
+      OLLAMA_HOST: ollama
     ports:
       - "8000:8000"
     volumes:
