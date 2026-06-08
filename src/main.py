@@ -21,6 +21,12 @@ async def lifespan(app: FastAPI):
     # Init providers
     embedding_provider = ProviderFactory.create_embedding_provider(settings)
     llm_provider = ProviderFactory.create_llm_provider(settings)
+
+    if settings.RERANKING_PROVIDER:
+        reranking_provider = ProviderFactory.create_reranking_provider(settings)
+        app.state.reranking_provider = reranking_provider
+        logger.info(f"Initialized reranking provider: {settings.RERANKING_PROVIDER}")
+
     app.state.embedding_provider = embedding_provider
     app.state.llm_provider = llm_provider
 
@@ -41,7 +47,7 @@ async def lifespan(app: FastAPI):
             embedding_model=current_model,
         )
         logger.info(f"Created Qdrant collection '{settings.QDRANT_COLLECTION}' "
-                     f"with dimension {embedding_size}")
+                    f"with dimension {embedding_size}")
         app.state.embedding_model_mismatch = False
     else:
         stored_model = qdrant_store.get_collection_model()

@@ -18,7 +18,7 @@ class EmbeddingProvider(ABC):
 class RerankingProvider(ABC):
 
     @abstractmethod
-    async def rerank(self, model:str, query: str, documents: list[str], top_n: int):
+    async def rerank(self, query: str, documents: list[str], top_n: int, model: str | None = None):
         pass
 
 

@@ -1,8 +1,9 @@
 from utils.config import Settings
 
-from .base_provider import EmbeddingProvider, LLMProvider
+from .base_provider import EmbeddingProvider, LLMProvider, RerankingProvider
 from .google_provider import GoogleEmbeddingProvider, GoogleLLMProvider
 from .openai_provider import OpenAIEmbeddingProvider, OpenAILLMProvider
+from .cohere_provider import CohereRerankingProvider
 from .openrouter_provider import OpenRouterEmbeddingProvider, OpenRouterLLMProvider
 from .ollama_provider import OllamaEmbeddingProvider, OllamaLLMProvider
 
@@ -44,6 +45,13 @@ LLM_PROVIDERS = {
     ),
 }
 
+RERANKING_PROVIDERS = {
+    "cohere": lambda s: CohereRerankingProvider(
+        api_key=s.COHERE_API_KEY,
+        default_model=s.RERANKING_MODEL or "rerank-v4.0-pro",
+    ),
+}
+
 
 class ProviderFactory:
 
@@ -66,5 +74,16 @@ class ProviderFactory:
             raise ValueError(
                 f"Unknown LLM_PROVIDER: '{provider_name}'. "
                 f"Supported: {list(LLM_PROVIDERS.keys())}"
+            )
+        return factory_fn(settings)
+
+    @staticmethod
+    def create_reranking_provider(settings: Settings) -> RerankingProvider:
+        provider_name = settings.RERANKING_PROVIDER.lower()
+        factory_fn = RERANKING_PROVIDERS.get(provider_name)
+        if not factory_fn:
+            raise ValueError(
+                f"Unknown RERANKING_PROVIDER: '{provider_name}'. "
+                f"Supported: {list(RERANKING_PROVIDERS.keys())}"
             )
         return factory_fn(settings)

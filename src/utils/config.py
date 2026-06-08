@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Provider selection
     EMBEDDING_PROVIDER: str = "google"
     LLM_PROVIDER: str = "google"
-    RERANKING_PROVIDER: str = "cohere"
+    RERANKING_PROVIDER: str = ""
 
     # Provider API keys
     GOOGLE_API_KEY: str = ""

@@ -41,7 +41,7 @@ class ProcessController(BaseController):
                              overlap_size: int = 20):
         
         text_splitter = RecursiveCharacterTextSplitter(
-            separators=["\n\n", "\n", ".", " ", ""],
+            separators=["\n\n", "\n", ".", "?", "!", " ", ""],
             chunk_size=chunk_size,
             chunk_overlap=overlap_size,
             length_function=len 
@@ -55,7 +55,6 @@ class ProcessController(BaseController):
         
         return chunks
 
-    # --- Embedding methods ---
 
     async def embed_file(self, file_id: str, chunks: list[Document]) -> int:
         texts = [chunk.page_content for chunk in chunks]

@@ -29,6 +29,7 @@ async def chat(request: Request, body: ChatRequest):
         embedding_provider=request.app.state.embedding_provider,
         qdrant_store=request.app.state.qdrant_store,
         redis_store=request.app.state.redis_store,
+        reranking_provider=getattr(request.app.state, "reranking_provider", None),
     )
 
     try:
@@ -39,9 +40,7 @@ async def chat(request: Request, body: ChatRequest):
         return ChatResponse(
             Signal=ResponseSignal.CHAT_SUCCESS.value,
             answer=result['answer'],
-            source_chunks=[
-                SourceChunk(**chunk) for chunk in result['source_chunks']
-            ],
+            source_chunks=[SourceChunk(**chunk) for chunk in result['source_chunks']],
         )
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -49,7 +48,6 @@ async def chat(request: Request, body: ChatRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             content={'Signal': ResponseSignal.CHAT_FAIL.value}
         )
-
 
 @chat_router.get('/sessions', response_model=SessionListResponse, summary="List active sessions")
 async def list_sessions(request: Request):
