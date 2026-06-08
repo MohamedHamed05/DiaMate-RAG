@@ -1,0 +1,200 @@
+{
+  "info": {
+    "name": "DiaMate-RAG API",
+    "description": "# DiaMate-RAG API\n\nA **Retrieval-Augmented Generation** system for diabetes-related health information.\n\n## Overview\n\nThis API lets you:\n1. **Upload** TXT/PDF documents about diabetes\n2. **Embed** them into a Qdrant vector database\n3. **Chat** with an LLM that grounds its answers in the uploaded documents\n4. **Manage** files, embeddings, and conversation sessions\n\n## Typical Workflow\n\n```\nUpload file → Embed file → Ask questions → View history\n```\n\n1. `POST /data/upload` — upload a document\n2. `POST /process/push` — embed it (or use `push_all` for batch)\n3. `POST /chat/` — ask a question with a session ID\n4. `GET /chat/{session_id}` — review conversation history\n\n## Configuration\n\nSet the `baseUrl` variable to point to your running server (default: `http://localhost:8000`).\n\n## Response Format\n\nAll endpoints return a `Signal` field indicating the result status. Check the Signal value for success/error details.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string",
+      "description": "Base URL of the DiaMate-RAG API server"
+    },
+    {
+      "key": "file_id",
+      "value": "",
+      "type": "string",
+      "description": "File ID returned by the Upload File request (e.g. 'a1b2c3d4_diabetes.txt')"
+    },
+    {
+      "key": "session_id",
+      "value": "user-123",
+      "type": "string",
+      "description": "Unique session identifier for grouping chat messages"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "description": "Verify the server is running and check the current app version.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/",
+            "description": "## Health Check\n\nReturns the application name, version, and status.\n\nUse this to verify the server is up and reachable before making other calls.\n\n### Response (200 OK)\n```json\n{\n  \"App Name\": \"DiaMate-RAG\",\n  \"App Version\": \"1.0.0\",\n  \"Status\": \"Good\"\n}\n```"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Data — File Management",
+      "description": "Upload, list, and delete document files.\n\nSupported file types: **TXT** and **PDF**.\n\nUploaded files are stored on the server and assigned a unique ID (UUID prefix + original filename). Use this ID for embedding and deletion.",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/data/upload",
+            "description": "## Upload a Document\n\nUpload a TXT or PDF file to the server. The file is validated for type and size, then stored with a UUID-prefixed filename.\n\n### How to Use\n1. Click **Body → form-data**\n2. Set key to `file`, type to **File**\n3. Select your TXT or PDF document\n4. Send the request\n5. Copy the returned `File_ID` — you'll need it for embedding\n\n### Validation Rules\n- Only `.txt` and `.pdf` files are accepted\n- File size must not exceed the configured `MAX_FILE_SIZE` (in MB)\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"File Uploaded Successfully\",\n  \"File_ID\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890_diabetes_info.txt\"\n}\n```\n\n### Error Responses\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 400 | `File Type Not Supported` | File is not TXT or PDF |\n| 400 | `File Size Exceeds Limits` | File exceeds max size |\n| 400 | `File Failed To Upload` | Server I/O error |",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "A .txt or .pdf document to upload"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Files",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/data/files",
+            "description": "## List All Uploaded Files\n\nReturns a list of all file IDs currently stored on the server.\n\nUse this to discover available files before embedding or deletion.\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"File Processed Successfully\",\n  \"files\": [\n    \"a1b2c3d4_diabetes_info.txt\",\n    \"e5f6a7b8_treatment_guide.pdf\"\n  ]\n}\n```\n\nAn empty `files` array means no documents have been uploaded yet."
+          }
+        },
+        {
+          "name": "Delete File & Embeddings",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/data/{{file_id}}",
+            "description": "## Delete a File and Its Embeddings\n\nPermanently removes a file from the server **and** deletes all its associated vector chunks from Qdrant.\n\n### How to Use\n1. Set the `file_id` collection variable, or replace `{{file_id}}` in the URL with the actual file ID\n2. The file ID is the value returned by the Upload endpoint (e.g. `a1b2c3d4_diabetes_info.txt`)\n\n### What Gets Deleted\n- The file from disk (`src/assets/files/`)\n- All Qdrant vector points with matching `file_id` in their payload\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"File Deleted Successfully\"\n}\n```\n\n### Error Response\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 404 | `File Failed to Delete` | File ID not found on disk |"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Process — Embedding Pipeline",
+      "description": "Manage the embedding pipeline: check status, embed individual files, batch-embed new files, or reindex everything.\n\nDocuments must be uploaded first (via Data endpoints), then embedded here before they can be used for chat.\n\n**Important:** If you change the embedding model in `.env`, existing embeddings become incompatible. The API will block `push` and `chat` calls with a `409 Conflict` until you call `/reindex`.",
+      "item": [
+        {
+          "name": "Embedding Status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/process/status",
+            "description": "## Check Embedding Status\n\nReturns an overview of the embedding pipeline: how many files are uploaded, how many are embedded, and which ones are still pending.\n\nAlso reports whether there's an embedding model mismatch (i.e., the configured model differs from the one used to create existing embeddings).\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"File Processed Successfully\",\n  \"total_files\": 5,\n  \"embedded_files\": 3,\n  \"pending_files\": 2,\n  \"pending_file_ids\": [\n    \"abc123_new_doc.txt\",\n    \"def456_another.pdf\"\n  ],\n  \"model_mismatch\": false\n}\n```\n\n### Key Fields\n| Field | Description |\n|-------|-------------|\n| `total_files` | Number of files on disk |\n| `embedded_files` | Number of files with vectors in Qdrant |\n| `pending_files` | Files uploaded but not yet embedded |\n| `pending_file_ids` | List of pending file IDs — pass these to `/push` |\n| `model_mismatch` | `true` if embedding model changed and reindex is needed |"
+          }
+        },
+        {
+          "name": "Embed Single File",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/process/push",
+            "description": "## Embed a Single File\n\nChunks the specified file and pushes its embeddings into Qdrant.\n\nIf the file is already embedded, it is skipped (idempotent).\n\n### Request Body\n| Field | Type | Required | Default | Description |\n|-------|------|----------|---------|-------------|\n| `file_id` | string | Yes | — | The file ID from the upload response |\n| `chunk_size` | int | No | 400 | Number of characters per chunk |\n| `overlap_size` | int | No | 0 | Character overlap between consecutive chunks |\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Embeddings Pushed Successfully\",\n  \"inserted_count\": 12,\n  \"message\": \"\"\n}\n```\n\nIf already embedded:\n```json\n{\n  \"Signal\": \"Embeddings Pushed Successfully\",\n  \"inserted_count\": 0,\n  \"message\": \"File already embedded, skipped.\"\n}\n```\n\n### Error Responses\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 400 | `File Not Found` | `file_id` doesn't match any uploaded file |\n| 400 | `Embeddings Failed to Push` | Embedding provider or Qdrant error |\n| 409 | `Embedding model changed...` | Model mismatch — call `/reindex` first |",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 400,\n  \"overlap_size\": 20\n}"
+            }
+          }
+        },
+        {
+          "name": "Embed All New Files",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/process/push_all",
+            "description": "## Embed All New Files (Batch)\n\nFinds all uploaded files that are **not yet embedded** in Qdrant, chunks them, and pushes their embeddings.\n\nAlready-embedded files are automatically skipped. This is the easiest way to bring Qdrant up to date after uploading multiple files.\n\n### Request Body\n| Field | Type | Required | Default | Description |\n|-------|------|----------|---------|-------------|\n| `chunk_size` | int | No | 400 | Characters per chunk |\n| `overlap_size` | int | No | 0 | Character overlap between chunks |\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Embeddings Pushed Successfully\",\n  \"new_files_processed\": 3,\n  \"inserted_count\": 45\n}\n```\n\nIf all files are already embedded, `new_files_processed` and `inserted_count` will be 0.\n\n### Error Responses\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 400 | `Embeddings Failed to Push` | Provider or Qdrant error |\n| 409 | `Embedding model changed...` | Model mismatch — call `/reindex` first |",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chunk_size\": 400,\n  \"overlap_size\": 20\n}"
+            }
+          }
+        },
+        {
+          "name": "Reindex All Files",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/process/reindex",
+            "description": "## Reindex All Files\n\n**Destructive operation.** Wipes the entire Qdrant collection and re-embeds all uploaded files from scratch with the currently configured embedding model.\n\n### When to Use\n- After changing `EMBEDDING_MODEL` or `EMBEDDING_PROVIDER` in `.env`\n- When the API returns `409 Conflict` with an embedding model mismatch signal\n- To re-chunk all files with different `chunk_size` / `overlap_size`\n\n### Request Body\n| Field | Type | Required | Default | Description |\n|-------|------|----------|---------|-------------|\n| `chunk_size` | int | No | 400 | Characters per chunk |\n| `overlap_size` | int | No | 0 | Character overlap between chunks |\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Reindex Completed Successfully\",\n  \"files_processed\": 5,\n  \"inserted_count\": 78\n}\n```\n\n### Error Responses\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 400 | `Embeddings Failed to Push` | Provider or Qdrant error during re-embedding |",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chunk_size\": 400,\n  \"overlap_size\": 20\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Chat — RAG Conversations",
+      "description": "Interact with the RAG system. Ask questions grounded in uploaded documents, and manage conversation sessions.\n\nEach conversation is identified by a `session_id`. Messages within a session are stored in Redis with a 24-hour TTL (configurable via `REDIS_CHAT_TTL`).\n\nThe LLM only answers from retrieved document context — it will not hallucinate answers outside the uploaded material.",
+      "item": [
+        {
+          "name": "Send Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/chat/",
+            "description": "## Ask a Question (RAG Pipeline)\n\nSends a question to the RAG pipeline. The system will:\n1. Embed your question using the configured embedding provider\n2. Search Qdrant for the most relevant document chunks\n3. Load conversation history from Redis for the given session\n4. Build a grounded prompt with the retrieved context\n5. Generate an answer via the configured LLM provider\n6. Save the Q&A pair to Redis for future context\n\n### Request Body\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `session_id` | string | Yes | Unique session ID — use the same ID to maintain conversation continuity |\n| `question` | string | Yes | The question to ask about diabetes-related topics |\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Chat Response Generated Successfully\",\n  \"answer\": \"Type 2 diabetes symptoms include increased thirst, frequent urination, and fatigue...\",\n  \"source_chunks\": [\n    {\n      \"text\": \"Common symptoms of type 2 diabetes include...\",\n      \"file_id\": \"a1b2c3d4_diabetes_info.txt\",\n      \"score\": 0.92,\n      \"metadata\": {}\n    }\n  ]\n}\n```\n\n### Key Fields\n| Field | Description |\n|-------|-------------|\n| `answer` | The LLM-generated answer, grounded in retrieved documents |\n| `source_chunks` | The document chunks used as context, with similarity scores |\n| `source_chunks[].score` | Cosine similarity score (0–1, higher = more relevant) |\n\n### Error Responses\n| Status | Signal | Cause |\n|--------|--------|-------|\n| 400 | `Failed to Generate Chat Response` | LLM or embedding provider error |\n| 409 | `Embedding model changed...` | Model mismatch — call `/process/reindex` first |",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"question\": \"What are the symptoms of type 2 diabetes?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Sessions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/chat/sessions",
+            "description": "## List Active Chat Sessions\n\nReturns all session IDs that currently have conversation history stored in Redis.\n\nSessions expire automatically after 24 hours of inactivity (configurable via `REDIS_CHAT_TTL`).\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Chat Response Generated Successfully\",\n  \"sessions\": [\n    \"user-123\",\n    \"user-456\",\n    \"demo-session\"\n  ]\n}\n```\n\nAn empty `sessions` array means no active conversations exist (all expired or cleared)."
+          }
+        },
+        {
+          "name": "Get Chat History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/chat/{{session_id}}",
+            "description": "## Get Conversation History\n\nRetrieves the full message history for a session, in chronological order.\n\n### How to Use\nSet the `session_id` collection variable, or replace `{{session_id}}` in the URL with the actual session ID (e.g. `user-123`).\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Chat Response Generated Successfully\",\n  \"session_id\": \"user-123\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"What is type 1 diabetes?\"},\n    {\"role\": \"assistant\", \"content\": \"Type 1 diabetes is an autoimmune condition where...\"}\n  ]\n}\n```\n\nAn empty `messages` array means the session has no history (new or expired)."
+          }
+        },
+        {
+          "name": "Clear Session",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/chat/{{session_id}}",
+            "description": "## Clear Conversation History\n\nDeletes all stored messages for the specified session from Redis.\n\nUse this to reset a conversation and start fresh with the same session ID.\n\n### How to Use\nSet the `session_id` collection variable, or replace `{{session_id}}` in the URL with the actual session ID.\n\n### Response (200 OK)\n```json\n{\n  \"Signal\": \"Session Cleared Successfully\"\n}\n```\n\nThis always returns 200, even if the session didn't exist (idempotent)."
+          }
+        }
+      ]
+    }
+  ]
+}

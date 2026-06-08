@@ -1,0 +1,20 @@
+from enum import Enum
+
+class ResponseSignal(Enum):
+    FILE_UPLOAD_SUCCESS = 'File Uploaded Successfully'
+    FILE_UPLOAD_FAILED = 'File Failed To Upload'
+    FILE_VALIDATION_SUCCESS = 'File Validated Successfully'
+    FILE_TYPE_NOT_SUPPORTED = 'File Type Not Supported'
+    FILE_SIZE_EXCEEDED = 'File Size Exceeds Limits'
+    FILE_PROCESS_SUCCESS = 'File Processed Successfully'
+    FILE_PROCESS_FAIL = 'File Failed to Process'
+    FILE_DELETE_SUCCESS = 'File Deleted Successfully'
+    FILE_DELETE_FAILED = 'File Failed to Delete'
+    EMBEDDING_PUSH_SUCCESS = 'Embeddings Pushed Successfully'
+    EMBEDDING_PUSH_FAIL = 'Embeddings Failed to Push'
+    EMBEDDING_REINDEX_SUCCESS = 'Reindex Completed Successfully'
+    EMBEDDING_MODEL_MISMATCH = 'Embedding model changed. Call /api/v1/process/reindex to re-embed your data.'
+    CHAT_SUCCESS = 'Chat Response Generated Successfully'
+    CHAT_FAIL = 'Failed to Generate Chat Response'
+    NO_FILES_FOUND = 'No Files Found'
+    FILE_NOT_FOUND = 'File Not Found'
