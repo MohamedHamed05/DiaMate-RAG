@@ -4,6 +4,7 @@ from .base_provider import EmbeddingProvider, LLMProvider, RerankingProvider
 from .google_provider import GoogleEmbeddingProvider, GoogleLLMProvider
 from .openai_provider import OpenAIEmbeddingProvider, OpenAILLMProvider
 from .cohere_provider import CohereRerankingProvider
+from .groq_provider import GroqLLMProvider
 from .openrouter_provider import OpenRouterEmbeddingProvider, OpenRouterLLMProvider
 from .ollama_provider import OllamaEmbeddingProvider, OllamaLLMProvider
 
@@ -43,6 +44,9 @@ LLM_PROVIDERS = {
         base_url=s.OLLAMA_BASE_URL,
         default_model=s.LLM_MODEL or "qwen3.5:9b",
     ),
+    "groq": lambda s: GroqLLMProvider(
+        api_key=s.GROQ_API_KEY,
+        default_model=s.LLM_MODEL or "llama-3.3-70b-versatile")
 }
 
 RERANKING_PROVIDERS = {

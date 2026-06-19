@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     COHERE_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
 
     # Ollama
