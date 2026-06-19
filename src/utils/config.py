@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_EMBED_BATCH_SIZE: int = 32
 
+    # Eval scripts
+    RAG_API_URL: str = "http://localhost:8000/api/v1/chat/"
+
     # Model overrides (blank = use provider default)
     EMBEDDING_MODEL: str = ""
     LLM_MODEL: str = ""
