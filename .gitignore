@@ -17,6 +17,7 @@ venv/
 env/
 !docker/env/
 !docker/env/*.env.example
+docker/env/*.env
 
 # Environment files
 .env
@@ -32,6 +33,18 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# OpenCode session state
+.omo/
+
+# Scratch / test files with secrets or one-off experiments
+test.py
+
+# Eval outputs and backups
+eval/*_backup.csv
+eval/*_ragas_results.csv
+eval/*_metrics.csv
+eval/test.csv
 
 # Uploaded assets (keep example)
 src/assets/files/*
